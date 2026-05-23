@@ -209,8 +209,7 @@ export default {
 <style scoped>
 .dragonbones-canvas {
   display: block;
-  width: 100%;
-  max-width: 420px;
+  max-width: 100%;
   height: auto;
 }
 </style>
