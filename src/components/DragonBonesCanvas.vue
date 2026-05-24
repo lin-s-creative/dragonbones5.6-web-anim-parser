@@ -5,6 +5,7 @@
     :width="width"
     :height="height"
     :aria-label="ariaLabel"
+    @click="handleCanvasClick"
   ></canvas>
 </template>
 
@@ -14,7 +15,7 @@ import atlasData from '../assets/dragonbones/ai_assistant_anim_tex.json';
 import atlasImageUrl from '../assets/dragonbones/ai_assistant_anim_tex.png';
 import { parseDragonBonesProject } from '../dragonbones/parseDragonBones.js';
 import { buildPose } from '../dragonbones/transform.js';
-import { renderDragonBonesCanvas } from '../dragonbones/renderCanvas.js';
+import { getDragonBonesHitItem, renderDragonBonesCanvas } from '../dragonbones/renderCanvas.js';
 
 export default {
   name: 'DragonBonesCanvas',
@@ -191,15 +192,58 @@ export default {
 
       const canvas = this.$refs.canvas;
       const ctx = canvas.getContext('2d');
-      const pose = buildPose(this.project, this.animationName, this.elapsedSeconds);
+      const pose = this.getCurrentPose();
 
       renderDragonBonesCanvas(ctx, this.project, pose, this.image, {
         width: this.width,
         height: this.height,
         scale: this.scale,
         backgroundColor: this.backgroundColor,
+        ...this.getCanvasTransformOptions(),
+      });
+    },
+    getCurrentPose() {
+      return buildPose(this.project, this.animationName, this.elapsedSeconds);
+    },
+    getCanvasTransformOptions() {
+      return {
         offsetX: this.width / 2 + this.offsetX,
         offsetY: this.height * 0.82 + this.offsetY,
+      };
+    },
+    handleCanvasClick(event) {
+      if (!this.project || !this.image || !this.$refs.canvas) {
+        return;
+      }
+
+      const canvas = this.$refs.canvas;
+      const rect = canvas.getBoundingClientRect();
+      const point = {
+        x: ((event.clientX - rect.left) / rect.width) * this.width,
+        y: ((event.clientY - rect.top) / rect.height) * this.height,
+      };
+      const hitItem = getDragonBonesHitItem(
+        this.project,
+        this.getCurrentPose(),
+        point,
+        {
+          width: this.width,
+          height: this.height,
+          scale: this.scale,
+          ...this.getCanvasTransformOptions(),
+        },
+      );
+
+      if (!hitItem) {
+        return;
+      }
+
+      this.$emit('object-click', {
+        displayName: hitItem.item.displayName,
+        slotName: hitItem.item.slotName,
+        boneName: hitItem.item.boneName,
+        canvasX: Math.round(point.x),
+        canvasY: Math.round(point.y),
       });
     },
   },

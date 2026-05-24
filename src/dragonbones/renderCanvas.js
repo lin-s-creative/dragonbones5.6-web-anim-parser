@@ -1,5 +1,82 @@
 import { createTransformMatrix, multiplyMatrices } from './transform.js';
 
+export function getDragonBonesDrawItems(project, pose, options = {}) {
+  const {
+    width,
+    height,
+    scale = 1,
+    offsetX,
+    offsetY,
+  } = options;
+
+  const centerX = offsetX ?? width / 2;
+  const centerY = offsetY ?? height / 2;
+
+  return project.drawItems
+    .map((item) => {
+      const boneMatrix = pose.worldTransforms.get(item.boneName);
+
+      if (!boneMatrix) {
+        return null;
+      }
+
+      const displayMatrix = createTransformMatrix(item.transform);
+      const finalMatrix = multiplyMatrices(boneMatrix, displayMatrix);
+      const alpha = pose.slotAlpha.get(item.slotName) ?? 1;
+      const texture = item.texture;
+
+      if (!texture || alpha <= 0.01) {
+        return null;
+      }
+
+      const drawWidth = texture.frameWidth || texture.width;
+      const drawHeight = texture.frameHeight || texture.height;
+      const localLeft = -drawWidth / 2 - texture.frameX;
+      const localTop = -drawHeight / 2 - texture.frameY;
+
+      return {
+        item,
+        texture,
+        alpha,
+        drawWidth,
+        drawHeight,
+        localLeft,
+        localTop,
+        matrix: {
+          a: finalMatrix.a * scale,
+          b: finalMatrix.b * scale,
+          c: finalMatrix.c * scale,
+          d: finalMatrix.d * scale,
+          e: centerX + finalMatrix.e * scale,
+          f: centerY + finalMatrix.f * scale,
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
+export function getDragonBonesHitItem(project, pose, point, options = {}) {
+  const drawItems = getDragonBonesDrawItems(project, pose, options);
+
+  for (let index = drawItems.length - 1; index >= 0; index -= 1) {
+    const drawItem = drawItems[index];
+    const localPoint = invertPoint(drawItem.matrix, point);
+
+    if (!localPoint) {
+      continue;
+    }
+
+    const isInsideX = localPoint.x >= drawItem.localLeft && localPoint.x <= drawItem.localLeft + drawItem.drawWidth;
+    const isInsideY = localPoint.y >= drawItem.localTop && localPoint.y <= drawItem.localTop + drawItem.drawHeight;
+
+    if (isInsideX && isInsideY) {
+      return drawItem;
+    }
+  }
+
+  return null;
+}
+
 export function renderDragonBonesCanvas(ctx, project, pose, image, options = {}) {
   const {
     width,
@@ -19,64 +96,56 @@ export function renderDragonBonesCanvas(ctx, project, pose, image, options = {})
     ctx.restore();
   }
 
-  const centerX = offsetX ?? width / 2;
-  const centerY = offsetY ?? height / 2;
+  const drawItems = getDragonBonesDrawItems(project, pose, {
+    width,
+    height,
+    scale,
+    offsetX,
+    offsetY,
+  });
 
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.scale(scale, scale);
+  for (const drawItem of drawItems) {
+    const { texture } = drawItem;
 
-  for (const item of project.drawItems) {
-    const boneMatrix = pose.worldTransforms.get(item.boneName);
+    ctx.save();
+    ctx.globalAlpha *= drawItem.alpha;
+    ctx.transform(
+      drawItem.matrix.a,
+      drawItem.matrix.b,
+      drawItem.matrix.c,
+      drawItem.matrix.d,
+      drawItem.matrix.e,
+      drawItem.matrix.f,
+    );
 
-    if (!boneMatrix) {
-      continue;
-    }
+    ctx.drawImage(
+      image,
+      texture.x,
+      texture.y,
+      texture.width,
+      texture.height,
+      drawItem.localLeft,
+      drawItem.localTop,
+      drawItem.drawWidth,
+      drawItem.drawHeight,
+    );
 
-    const displayMatrix = createTransformMatrix(item.transform);
-    const finalMatrix = multiplyMatrices(boneMatrix, displayMatrix);
-    const alpha = pose.slotAlpha.get(item.slotName) ?? 1;
-
-    drawTexturePart(ctx, image, item.texture, finalMatrix, alpha);
+    ctx.restore();
   }
-
-  ctx.restore();
 }
 
-function drawTexturePart(ctx, image, texture, matrix, alpha) {
-  const drawWidth = texture.frameWidth || texture.width;
-  const drawHeight = texture.frameHeight || texture.height;
+function invertPoint(matrix, point) {
+  const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
 
-  ctx.save();
-  ctx.globalAlpha *= alpha;
-  ctx.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
-
-  if (texture.rotated) {
-    ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(
-      image,
-      texture.x,
-      texture.y,
-      texture.height,
-      texture.width,
-      -drawHeight / 2 - texture.frameY,
-      -drawWidth / 2 - texture.frameX,
-      drawHeight,
-      drawWidth,
-    );
-  } else {
-    ctx.drawImage(
-      image,
-      texture.x,
-      texture.y,
-      texture.width,
-      texture.height,
-      -drawWidth / 2 - texture.frameX,
-      -drawHeight / 2 - texture.frameY,
-      drawWidth,
-      drawHeight,
-    );
+  if (Math.abs(determinant) < 0.000001) {
+    return null;
   }
 
-  ctx.restore();
+  const x = point.x - matrix.e;
+  const y = point.y - matrix.f;
+
+  return {
+    x: (matrix.d * x - matrix.c * y) / determinant,
+    y: (-matrix.b * x + matrix.a * y) / determinant,
+  };
 }

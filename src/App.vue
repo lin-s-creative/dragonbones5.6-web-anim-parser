@@ -13,7 +13,15 @@
           armature-name="Armature"
           animation-name="animtion0"
           background-color="transparent"
+          @object-click="showObjectClickToast"
         />
+      </div>
+
+      <div class="toast-stack" aria-live="polite" aria-atomic="false">
+        <article v-for="toast in toasts" :key="toast.id" class="toast">
+          <strong>{{ toast.title }}</strong>
+          <span>{{ toast.message }}</span>
+        </article>
       </div>
 
       <div class="controls">
@@ -91,6 +99,8 @@ export default {
       canvasHeight: 500,
       offsetX: 0,
       offsetY: 0,
+      toasts: [],
+      nextToastId: 1,
     };
   },
   computed: {
@@ -128,6 +138,22 @@ export default {
     resetPosition() {
       this.offsetX = 0;
       this.offsetY = 0;
+    },
+    showObjectClickToast(hitInfo) {
+      const id = this.nextToastId;
+      this.nextToastId += 1;
+      this.toasts = [
+        {
+          id,
+          title: 'Object click detected',
+          message: `Slot: ${hitInfo.slotName}, texture: ${hitInfo.displayName}`,
+        },
+        ...this.toasts,
+      ].slice(0, 4);
+
+      window.setTimeout(() => {
+        this.toasts = this.toasts.filter((toast) => toast.id !== id);
+      }, 2600);
     },
   },
 };
