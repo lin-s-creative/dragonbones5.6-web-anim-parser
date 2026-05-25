@@ -27,7 +27,7 @@
     <div
       v-if="hasSpeechText"
       class="character-speech animated-character-reveal"
-      :class="{ 'animated-character-reveal--visible': isCharacterOverlayVisible }"
+      :class="{ 'animated-character-reveal--visible': isSpeechBubbleVisible }"
       :style="speechBubbleStyle"
       role="status"
       aria-live="polite"
@@ -201,6 +201,7 @@ import DragonBonesCanvas from './components/DragonBonesCanvas.vue';
 import ColorTileBackground from './components/ColorTileBackground.vue';
 
 const DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS = 3000;
+const SPEECH_REVEAL_DELAY_OFFSET_MS = 3000;
 const DEFAULT_CANVAS_WIDTH = 360;
 const DEFAULT_CANVAS_HEIGHT = 440;
 const MIN_CANVAS_DIMENSION = 50;
@@ -215,18 +216,34 @@ const DEFAULT_SPEECH_OFFSET_Y = -210;
 const MIN_SPEECH_OFFSET = -600;
 const MAX_SPEECH_OFFSET = 600;
 
-function normalizeRevealDelay(value) {
+function normalizeRevealDelay(value, fallback = DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS) {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+
   const numberValue = Number(value);
 
   if (!Number.isFinite(numberValue)) {
-    return DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS;
+    return fallback;
   }
 
   return Math.max(0, Math.round(numberValue));
 }
 
+function getDefaultSpeechRevealDelay(revealDelay) {
+  return normalizeRevealDelay(revealDelay) + SPEECH_REVEAL_DELAY_OFFSET_MS;
+}
+
+function normalizeSpeechRevealDelay(speechRevealDelay, revealDelay) {
+  return normalizeRevealDelay(speechRevealDelay, getDefaultSpeechRevealDelay(revealDelay));
+}
+
 function shouldUseDelayedCharacterReveal(smoothReveal, revealDelay) {
   return smoothReveal && normalizeRevealDelay(revealDelay) > 0;
+}
+
+function shouldUseDelayedSpeechReveal(smoothReveal, speechRevealDelay, revealDelay) {
+  return smoothReveal && normalizeSpeechRevealDelay(speechRevealDelay, revealDelay) > 0;
 }
 
 export default {
@@ -248,6 +265,10 @@ export default {
       type: [Number, String],
       default: DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS,
     },
+    speechRevealDelay: {
+      type: [Number, String],
+      default: null,
+    },
   },
   data() {
     return {
@@ -264,7 +285,13 @@ export default {
       toasts: [],
       nextToastId: 1,
       isCharacterOverlayVisible: !shouldUseDelayedCharacterReveal(this.smoothReveal, this.revealDelay),
+      isSpeechBubbleVisible: !shouldUseDelayedSpeechReveal(
+        this.smoothReveal,
+        this.speechRevealDelay,
+        this.revealDelay,
+      ),
       characterOverlayRevealTimeoutId: null,
+      speechBubbleRevealTimeoutId: null,
     };
   },
   computed: {
@@ -308,26 +335,42 @@ export default {
     normalizedRevealDelay() {
       return normalizeRevealDelay(this.revealDelay);
     },
+    normalizedSpeechRevealDelay() {
+      return normalizeSpeechRevealDelay(this.speechRevealDelay, this.revealDelay);
+    },
   },
   watch: {
     smoothReveal() {
       this.scheduleCharacterOverlayReveal();
+      this.scheduleSpeechBubbleReveal();
     },
     revealDelay() {
       this.scheduleCharacterOverlayReveal();
+      this.scheduleSpeechBubbleReveal();
+    },
+    speechRevealDelay() {
+      this.scheduleSpeechBubbleReveal();
     },
   },
   mounted() {
     this.scheduleCharacterOverlayReveal();
+    this.scheduleSpeechBubbleReveal();
   },
   beforeUnmount() {
     this.clearCharacterOverlayRevealTimeout();
+    this.clearSpeechBubbleRevealTimeout();
   },
   methods: {
     clearCharacterOverlayRevealTimeout() {
       if (this.characterOverlayRevealTimeoutId !== null) {
         window.clearTimeout(this.characterOverlayRevealTimeoutId);
         this.characterOverlayRevealTimeoutId = null;
+      }
+    },
+    clearSpeechBubbleRevealTimeout() {
+      if (this.speechBubbleRevealTimeoutId !== null) {
+        window.clearTimeout(this.speechBubbleRevealTimeoutId);
+        this.speechBubbleRevealTimeoutId = null;
       }
     },
     scheduleCharacterOverlayReveal() {
@@ -343,6 +386,20 @@ export default {
         this.isCharacterOverlayVisible = true;
         this.characterOverlayRevealTimeoutId = null;
       }, this.normalizedRevealDelay);
+    },
+    scheduleSpeechBubbleReveal() {
+      this.clearSpeechBubbleRevealTimeout();
+
+      if (!this.smoothReveal || this.normalizedSpeechRevealDelay <= 0) {
+        this.isSpeechBubbleVisible = true;
+        return;
+      }
+
+      this.isSpeechBubbleVisible = false;
+      this.speechBubbleRevealTimeoutId = window.setTimeout(() => {
+        this.isSpeechBubbleVisible = true;
+        this.speechBubbleRevealTimeoutId = null;
+      }, this.normalizedSpeechRevealDelay);
     },
     normalizeCanvasDimension(value, fallback) {
       const numberValue = Number(value);
