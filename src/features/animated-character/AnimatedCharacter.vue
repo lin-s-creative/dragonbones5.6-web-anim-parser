@@ -21,6 +21,16 @@
       />
     </div>
 
+    <div
+      v-if="hasSpeechText"
+      class="character-speech"
+      :style="speechBubbleStyle"
+      role="status"
+      aria-live="polite"
+    >
+      <p>{{ speechText }}</p>
+    </div>
+
     <div class="toast-stack" aria-live="polite" aria-atomic="false">
       <article v-for="toast in toasts" :key="toast.id" class="toast">
         <strong>{{ toast.title }}</strong>
@@ -31,7 +41,7 @@
     <section
       v-if="showAnimationControls"
       class="animated-character-card"
-      aria-label="Animation and canvas positioning controls"
+      aria-label="Animation, canvas, and speech controls"
     >
       <div class="controls" aria-label="Animation controls">
         <button type="button" @click="playAnimation">Play</button>
@@ -135,6 +145,44 @@
           Reset position
         </button>
       </div>
+
+      <div class="canvas-controls speech-controls" aria-label="Speech bubble controls">
+        <label class="canvas-field speech-text-field">
+          <span>Speech text</span>
+          <input
+            v-model="speechText"
+            type="text"
+            maxlength="160"
+            placeholder="Type the character speech"
+          />
+        </label>
+
+        <label class="canvas-field">
+          <span>Speech offset X, px</span>
+          <input
+            v-model.number="speechOffsetX"
+            type="number"
+            step="5"
+            min="-600"
+            max="600"
+          />
+        </label>
+
+        <label class="canvas-field">
+          <span>Speech offset Y, px</span>
+          <input
+            v-model.number="speechOffsetY"
+            type="number"
+            step="5"
+            min="-600"
+            max="600"
+          />
+        </label>
+
+        <button type="button" class="secondary-button" @click="resetSpeechPosition">
+          Reset speech position
+        </button>
+      </div>
     </section>
   </aside>
 </template>
@@ -151,6 +199,11 @@ const DEFAULT_CANVAS_VIEWPORT_X = 76;
 const DEFAULT_CANVAS_VIEWPORT_Y = 48;
 const MIN_CANVAS_VIEWPORT_PERCENT = 0;
 const MAX_CANVAS_VIEWPORT_PERCENT = 100;
+const DEFAULT_SPEECH_TEXT = 'Hello! I stay above the page while you scroll.';
+const DEFAULT_SPEECH_OFFSET_X = -220;
+const DEFAULT_SPEECH_OFFSET_Y = -210;
+const MIN_SPEECH_OFFSET = -600;
+const MAX_SPEECH_OFFSET = 600;
 
 export default {
   name: 'AnimatedCharacter',
@@ -173,6 +226,9 @@ export default {
       showCanvasBackground: true,
       offsetX: 0,
       offsetY: 0,
+      speechText: DEFAULT_SPEECH_TEXT,
+      speechOffsetX: DEFAULT_SPEECH_OFFSET_X,
+      speechOffsetY: DEFAULT_SPEECH_OFFSET_Y,
       toasts: [],
       nextToastId: 1,
     };
@@ -197,6 +253,22 @@ export default {
         top: `${this.normalizedCanvasViewportY}vh`,
         '--canvas-preview-border-color': this.showCanvasBackground ? 'rgb(191 219 254 / 34%)' : 'transparent',
         '--canvas-preview-shadow': this.showCanvasBackground ? '0 28px 70px rgb(15 23 42 / 34%)' : 'none',
+      };
+    },
+    hasSpeechText() {
+      return String(this.speechText || '').trim().length > 0;
+    },
+    normalizedSpeechOffsetX() {
+      return this.normalizeSpeechOffset(this.speechOffsetX, DEFAULT_SPEECH_OFFSET_X);
+    },
+    normalizedSpeechOffsetY() {
+      return this.normalizeSpeechOffset(this.speechOffsetY, DEFAULT_SPEECH_OFFSET_Y);
+    },
+    speechBubbleStyle() {
+      return {
+        left: `${this.normalizedCanvasViewportX}vw`,
+        top: `${this.normalizedCanvasViewportY}vh`,
+        transform: `translate(-50%, -50%) translate(${this.normalizedSpeechOffsetX}px, ${this.normalizedSpeechOffsetY}px)`,
       };
     },
   },
@@ -225,6 +297,18 @@ export default {
         MAX_CANVAS_VIEWPORT_PERCENT,
       );
     },
+    normalizeSpeechOffset(value, fallback) {
+      const numberValue = Number(value);
+
+      if (!Number.isFinite(numberValue)) {
+        return fallback;
+      }
+
+      return Math.min(
+        Math.max(Math.round(numberValue), MIN_SPEECH_OFFSET),
+        MAX_SPEECH_OFFSET,
+      );
+    },
     playAnimation() {
       const dragonBones = this.$refs.dragonBones;
 
@@ -251,6 +335,10 @@ export default {
       this.canvasViewportY = DEFAULT_CANVAS_VIEWPORT_Y;
       this.offsetX = 0;
       this.offsetY = 0;
+    },
+    resetSpeechPosition() {
+      this.speechOffsetX = DEFAULT_SPEECH_OFFSET_X;
+      this.speechOffsetY = DEFAULT_SPEECH_OFFSET_Y;
     },
     showObjectClickToast(hitInfo) {
       const id = this.nextToastId;
@@ -329,6 +417,46 @@ export default {
   width: 100%;
   height: auto;
   cursor: pointer;
+}
+
+.character-speech {
+  position: fixed;
+  z-index: 1002;
+  max-width: min(320px, calc(100vw - 48px));
+  padding: 16px 18px;
+  border: 1px solid rgb(191 219 254 / 50%);
+  border-radius: 22px 22px 6px 22px;
+  color: #e0f2fe;
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 92%), rgb(30 64 175 / 82%)),
+    radial-gradient(circle at 12% 0%, rgb(125 211 252 / 40%), transparent 44%);
+  box-shadow: 0 22px 60px rgb(2 6 23 / 38%);
+  backdrop-filter: blur(16px);
+  pointer-events: none;
+}
+
+.character-speech::after {
+  position: absolute;
+  right: 26px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-right: 1px solid rgb(191 219 254 / 42%);
+  border-bottom: 1px solid rgb(191 219 254 / 42%);
+  background: rgb(30 64 175 / 84%);
+  content: '';
+  transform: rotate(45deg);
+}
+
+.character-speech p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-shadow: 0 1px 12px rgb(2 6 23 / 34%);
+  white-space: pre-wrap;
 }
 
 .toast-stack {
@@ -423,7 +551,8 @@ button:focus-visible {
   background: rgb(15 23 42 / 42%);
 }
 
-.canvas-controls--position {
+.canvas-controls--position,
+.speech-controls {
   align-items: center;
 }
 
@@ -448,6 +577,14 @@ button:focus-visible {
 .canvas-field input:focus {
   border-color: rgb(96 165 250 / 76%);
   box-shadow: 0 0 0 3px rgb(37 99 235 / 22%);
+}
+
+.speech-text-field {
+  flex: 1 1 280px;
+}
+
+.speech-text-field input {
+  width: min(100%, 360px);
 }
 
 .canvas-toggle {
@@ -510,6 +647,26 @@ button:focus-visible {
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
     border-radius: 18px;
+  }
+
+  .character-speech {
+    max-width: min(280px, calc(100vw - 24px));
+    padding: 14px 16px;
+    border-radius: 18px 18px 6px 18px;
+  }
+
+  .character-speech p {
+    font-size: 14px;
+  }
+
+  .character-speech {
+    max-width: min(280px, calc(100vw - 24px));
+    padding: 14px 16px;
+    border-radius: 18px 18px 6px 18px;
+  }
+
+  .character-speech p {
+    font-size: 14px;
   }
 
   .toast-stack {
