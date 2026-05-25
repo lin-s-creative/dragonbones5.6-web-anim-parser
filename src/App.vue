@@ -1,5 +1,5 @@
 <template>
-  <AnimatedCharacter />
+  <AnimatedCharacter show-animation-controls />
 </template>
 
 <script>
