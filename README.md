@@ -11,7 +11,9 @@
 
 ## Компонент
 
-Основной файл: `src/components/DragonBonesCanvas.vue`.
+Основной файл: [`src/features/animated-character/components/DragonBonesCanvas.vue`](src/features/animated-character/components/DragonBonesCanvas.vue).
+
+Файлы экспорта DragonBones (`*.json`, `*.png`) лежат только в `src/features/animated-character/assets`, runtime — только в `src/features/animated-character/runtime`, компоненты — только в `src/features/animated-character/components`.
 
 Props:
 
