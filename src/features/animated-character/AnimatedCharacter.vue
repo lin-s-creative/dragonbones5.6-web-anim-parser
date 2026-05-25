@@ -1,5 +1,5 @@
 <template>
-  <main class="animated-character-page">
+  <aside class="animated-character-overlay" aria-label="Animation overlay with controls">
     <div
       class="canvas-preview"
       :class="{ 'canvas-preview--transparent': !showCanvasBackground }"
@@ -136,19 +136,19 @@
         </button>
       </div>
     </section>
-  </main>
+  </aside>
 </template>
 
 <script>
 import DragonBonesCanvas from './components/DragonBonesCanvas.vue';
 import ColorTileBackground from './components/ColorTileBackground.vue';
 
-const DEFAULT_CANVAS_WIDTH = 420;
-const DEFAULT_CANVAS_HEIGHT = 500;
+const DEFAULT_CANVAS_WIDTH = 360;
+const DEFAULT_CANVAS_HEIGHT = 440;
 const MIN_CANVAS_DIMENSION = 50;
 const MAX_CANVAS_DIMENSION = 1200;
-const DEFAULT_CANVAS_VIEWPORT_X = 50;
-const DEFAULT_CANVAS_VIEWPORT_Y = 50;
+const DEFAULT_CANVAS_VIEWPORT_X = 76;
+const DEFAULT_CANVAS_VIEWPORT_Y = 48;
 const MIN_CANVAS_VIEWPORT_PERCENT = 0;
 const MAX_CANVAS_VIEWPORT_PERCENT = 100;
 
@@ -195,8 +195,8 @@ export default {
         width: `${this.normalizedCanvasWidth}px`,
         left: `${this.normalizedCanvasViewportX}vw`,
         top: `${this.normalizedCanvasViewportY}vh`,
-        '--canvas-preview-border-color': this.showCanvasBackground ? 'rgb(15 23 42 / 10%)' : 'transparent',
-        '--canvas-preview-shadow': this.showCanvasBackground ? '0 18px 45px rgb(15 23 42 / 12%)' : 'none',
+        '--canvas-preview-border-color': this.showCanvasBackground ? 'rgb(191 219 254 / 34%)' : 'transparent',
+        '--canvas-preview-shadow': this.showCanvasBackground ? '0 28px 70px rgb(15 23 42 / 34%)' : 'none',
       };
     },
   },
@@ -226,13 +226,25 @@ export default {
       );
     },
     playAnimation() {
-      this.$refs.dragonBones.playAnimation();
+      const dragonBones = this.$refs.dragonBones;
+
+      if (dragonBones) {
+        dragonBones.playAnimation();
+      }
     },
     stopAnimation() {
-      this.$refs.dragonBones.stopAnimation();
+      const dragonBones = this.$refs.dragonBones;
+
+      if (dragonBones) {
+        dragonBones.stopAnimation();
+      }
     },
     resetAnimation() {
-      this.$refs.dragonBones.resetAnimation();
+      const dragonBones = this.$refs.dragonBones;
+
+      if (dragonBones) {
+        dragonBones.resetAnimation();
+      }
     },
     resetPosition() {
       this.canvasViewportX = DEFAULT_CANVAS_VIEWPORT_X;
@@ -261,46 +273,61 @@ export default {
 </script>
 
 <style scoped>
-.animated-character-page {
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
-  padding: 24px;
+.animated-character-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: visible;
+  pointer-events: none;
+  isolation: isolate;
 }
 
 .animated-character-card {
   position: fixed;
   left: 24px;
   bottom: 24px;
-  z-index: 10;
+  z-index: 1002;
   display: grid;
-  width: min(780px, calc(100vw - 48px));
+  width: min(760px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   gap: 16px;
   overflow: auto;
-  padding: 20px;
+  padding: 18px;
+  border: 1px solid rgb(148 163 184 / 28%);
   border-radius: 24px;
-  background: rgb(255 255 255 / 94%);
-  box-shadow: 0 18px 45px rgb(15 23 42 / 14%);
-  backdrop-filter: blur(12px);
+  color: #dbeafe;
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 86%)),
+    radial-gradient(circle at 16% 0%, rgb(96 165 250 / 28%), transparent 42%);
+  box-shadow: 0 26px 80px rgb(2 6 23 / 42%);
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
 }
 
 .canvas-preview {
   position: fixed;
-  z-index: 1;
+  z-index: 1001;
   max-width: calc(100vw - 48px);
   max-height: calc(100vh - 48px);
   overflow: hidden;
-  border: 1px solid var(--canvas-preview-border-color, rgb(15 23 42 / 10%));
-  border-radius: 18px;
+  border: 1px solid var(--canvas-preview-border-color, rgb(191 219 254 / 34%));
+  border-radius: 22px;
   background: transparent;
   transform: translate(-50%, -50%);
-  box-shadow: var(--canvas-preview-shadow, 0 18px 45px rgb(15 23 42 / 12%));
+  box-shadow: var(--canvas-preview-shadow, 0 28px 70px rgb(15 23 42 / 34%));
+  pointer-events: auto;
+}
+
+.canvas-preview--transparent {
+  overflow: visible;
 }
 
 .canvas-preview .dragonbones-canvas {
   position: relative;
   z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
   cursor: pointer;
 }
 
@@ -308,7 +335,7 @@ export default {
   position: fixed;
   top: 24px;
   right: 24px;
-  z-index: 20;
+  z-index: 1003;
   display: grid;
   gap: 10px;
   width: min(320px, calc(100vw - 48px));
@@ -319,21 +346,21 @@ export default {
   display: grid;
   gap: 4px;
   padding: 14px 16px;
-  border: 1px solid rgb(37 99 235 / 25%);
+  border: 1px solid rgb(96 165 250 / 34%);
   border-radius: 16px;
-  color: #172033;
-  background: rgb(255 255 255 / 92%);
-  box-shadow: 0 16px 40px rgb(15 23 42 / 18%);
-  backdrop-filter: blur(10px);
+  color: #e0f2fe;
+  background: rgb(15 23 42 / 88%);
+  box-shadow: 0 16px 40px rgb(2 6 23 / 34%);
+  backdrop-filter: blur(12px);
 }
 
 .toast strong {
-  color: #1d4ed8;
+  color: #93c5fd;
   font-size: 14px;
 }
 
 .toast span {
-  color: #475569;
+  color: #cbd5e1;
   font-size: 13px;
 }
 
@@ -347,22 +374,33 @@ button {
   border-radius: 999px;
   padding: 10px 18px;
   color: #ffffff;
-  background: #2563eb;
-  font-weight: 700;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  box-shadow: 0 10px 24px rgb(37 99 235 / 24%);
+  font-weight: 800;
   cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
 }
 
-button:hover {
-  background: #1d4ed8;
+button:hover,
+button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgb(37 99 235 / 34%);
+  filter: brightness(1.06);
+  outline: none;
 }
 
 .secondary-button {
-  color: #1d4ed8;
-  background: #dbeafe;
+  color: #dbeafe;
+  background: rgb(30 64 175 / 70%);
+  box-shadow: inset 0 0 0 1px rgb(147 197 253 / 24%);
 }
 
-.secondary-button:hover {
-  background: #bfdbfe;
+.secondary-button:hover,
+.secondary-button:focus-visible {
+  background: rgb(37 99 235 / 82%);
 }
 
 .controls {
@@ -373,15 +411,16 @@ button:hover {
 }
 
 .canvas-controls {
-  width: 100%;
   display: flex;
+  width: 100%;
   flex-wrap: wrap;
   align-items: end;
   justify-content: center;
   gap: 12px;
   padding: 14px;
+  border: 1px solid rgb(148 163 184 / 18%);
   border-radius: 18px;
-  background: #f8fafc;
+  background: rgb(15 23 42 / 42%);
 }
 
 .canvas-controls--position {
@@ -391,35 +430,41 @@ button:hover {
 .canvas-field {
   display: grid;
   gap: 6px;
-  color: #475569;
+  color: #bfdbfe;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .canvas-field input {
   width: 130px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgb(147 197 253 / 28%);
   border-radius: 12px;
   padding: 9px 12px;
-  color: #172033;
-  background: #ffffff;
+  color: #e0f2fe;
+  background: rgb(2 6 23 / 62%);
+  outline: none;
+}
+
+.canvas-field input:focus {
+  border-color: rgb(96 165 250 / 76%);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 22%);
 }
 
 .canvas-toggle {
   display: inline-flex;
+  min-height: 42px;
   align-items: center;
   gap: 8px;
-  min-height: 42px;
-  color: #475569;
+  color: #bfdbfe;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .canvas-toggle input {
   width: 18px;
   height: 18px;
-  accent-color: #2563eb;
+  accent-color: #60a5fa;
   cursor: pointer;
 }
 
@@ -436,6 +481,7 @@ button:hover {
 .canvas-field--range input[type='range'] {
   width: 100%;
   padding: 0;
+  accent-color: #60a5fa;
 }
 
 .canvas-field--range input[type='number'] {
@@ -444,8 +490,55 @@ button:hover {
 
 .canvas-position-summary {
   margin: 0;
-  color: #475569;
+  color: #cbd5e1;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .animated-character-card {
+    left: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+    max-height: 44vh;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .canvas-preview {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    border-radius: 18px;
+  }
+
+  .toast-stack {
+    top: 12px;
+    right: 12px;
+    width: min(300px, calc(100vw - 24px));
+  }
+
+  .canvas-controls {
+    justify-content: stretch;
+    padding: 12px;
+  }
+
+  .canvas-field {
+    flex: 1 1 132px;
+  }
+
+  .canvas-field input {
+    width: 100%;
+  }
+
+  .canvas-field--range {
+    grid-template-columns: minmax(120px, 1fr) 68px;
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .canvas-field--range input[type='number'] {
+    width: 68px;
+  }
 }
 </style>
