@@ -1,8 +1,11 @@
 <template>
   <aside class="animated-character-overlay" aria-label="Animation overlay with controls">
     <div
-      class="canvas-preview"
-      :class="{ 'canvas-preview--transparent': !showCanvasBackground }"
+      class="canvas-preview animated-character-reveal"
+      :class="{
+        'canvas-preview--transparent': !showCanvasBackground,
+        'animated-character-reveal--visible': isCharacterOverlayVisible,
+      }"
       :style="canvasPreviewStyle"
       aria-label="Animation canvas preview"
     >
@@ -23,7 +26,8 @@
 
     <div
       v-if="hasSpeechText"
-      class="character-speech"
+      class="character-speech animated-character-reveal"
+      :class="{ 'animated-character-reveal--visible': isCharacterOverlayVisible }"
       :style="speechBubbleStyle"
       role="status"
       aria-live="polite"
@@ -31,7 +35,12 @@
       <p>{{ speechText }}</p>
     </div>
 
-    <div class="toast-stack" aria-live="polite" aria-atomic="false">
+    <div
+      class="toast-stack animated-character-reveal"
+      :class="{ 'animated-character-reveal--visible': isCharacterOverlayVisible }"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       <article v-for="toast in toasts" :key="toast.id" class="toast">
         <strong>{{ toast.title }}</strong>
         <span>{{ toast.message }}</span>
@@ -191,6 +200,7 @@
 import DragonBonesCanvas from './components/DragonBonesCanvas.vue';
 import ColorTileBackground from './components/ColorTileBackground.vue';
 
+const DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS = 3000;
 const DEFAULT_CANVAS_WIDTH = 360;
 const DEFAULT_CANVAS_HEIGHT = 440;
 const MIN_CANVAS_DIMENSION = 50;
@@ -205,6 +215,20 @@ const DEFAULT_SPEECH_OFFSET_Y = -210;
 const MIN_SPEECH_OFFSET = -600;
 const MAX_SPEECH_OFFSET = 600;
 
+function normalizeRevealDelay(value) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS;
+  }
+
+  return Math.max(0, Math.round(numberValue));
+}
+
+function shouldUseDelayedCharacterReveal(smoothReveal, revealDelay) {
+  return smoothReveal && normalizeRevealDelay(revealDelay) > 0;
+}
+
 export default {
   name: 'AnimatedCharacter',
   components: {
@@ -215,6 +239,14 @@ export default {
     showAnimationControls: {
       type: Boolean,
       default: false,
+    },
+    smoothReveal: {
+      type: Boolean,
+      default: true,
+    },
+    revealDelay: {
+      type: [Number, String],
+      default: DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS,
     },
   },
   data() {
@@ -231,6 +263,8 @@ export default {
       speechOffsetY: DEFAULT_SPEECH_OFFSET_Y,
       toasts: [],
       nextToastId: 1,
+      isCharacterOverlayVisible: !shouldUseDelayedCharacterReveal(this.smoothReveal, this.revealDelay),
+      characterOverlayRevealTimeoutId: null,
     };
   },
   computed: {
@@ -271,8 +305,45 @@ export default {
         transform: `translate(-50%, -50%) translate(${this.normalizedSpeechOffsetX}px, ${this.normalizedSpeechOffsetY}px)`,
       };
     },
+    normalizedRevealDelay() {
+      return normalizeRevealDelay(this.revealDelay);
+    },
+  },
+  watch: {
+    smoothReveal() {
+      this.scheduleCharacterOverlayReveal();
+    },
+    revealDelay() {
+      this.scheduleCharacterOverlayReveal();
+    },
+  },
+  mounted() {
+    this.scheduleCharacterOverlayReveal();
+  },
+  beforeUnmount() {
+    this.clearCharacterOverlayRevealTimeout();
   },
   methods: {
+    clearCharacterOverlayRevealTimeout() {
+      if (this.characterOverlayRevealTimeoutId !== null) {
+        window.clearTimeout(this.characterOverlayRevealTimeoutId);
+        this.characterOverlayRevealTimeoutId = null;
+      }
+    },
+    scheduleCharacterOverlayReveal() {
+      this.clearCharacterOverlayRevealTimeout();
+
+      if (!this.smoothReveal || this.normalizedRevealDelay <= 0) {
+        this.isCharacterOverlayVisible = true;
+        return;
+      }
+
+      this.isCharacterOverlayVisible = false;
+      this.characterOverlayRevealTimeoutId = window.setTimeout(() => {
+        this.isCharacterOverlayVisible = true;
+        this.characterOverlayRevealTimeoutId = null;
+      }, this.normalizedRevealDelay);
+    },
     normalizeCanvasDimension(value, fallback) {
       const numberValue = Number(value);
 
@@ -390,6 +461,24 @@ export default {
   box-shadow: 0 26px 80px rgb(2 6 23 / 42%);
   backdrop-filter: blur(18px);
   pointer-events: auto;
+}
+
+.animated-character-reveal {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 600ms ease,
+    visibility 0s linear 600ms;
+}
+
+.animated-character-reveal--visible {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.animated-character-reveal:not(.animated-character-reveal--visible) {
+  pointer-events: none;
 }
 
 .canvas-preview {
