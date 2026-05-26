@@ -14,7 +14,7 @@
         ref="dragonBones"
         :width="normalizedCanvasWidth"
         :height="normalizedCanvasHeight"
-        :scale="0.3"
+        :scale="normalizedAnimationScale"
         :offset-x="offsetX"
         :offset-y="offsetY"
         armature-name="Armature"
@@ -146,8 +146,27 @@
           />
         </label>
 
+        <label class="canvas-field canvas-field--range">
+          <span>Animation scale</span>
+          <input
+            v-model.number="animationScale"
+            type="range"
+            :step="ANIMATION_SCALE_STEP"
+            :min="MIN_ANIMATION_SCALE"
+            :max="MAX_ANIMATION_SCALE"
+          />
+          <input
+            v-model.number="animationScale"
+            type="number"
+            :step="ANIMATION_SCALE_STEP"
+            :min="MIN_ANIMATION_SCALE"
+            :max="MAX_ANIMATION_SCALE"
+          />
+        </label>
+
         <p class="canvas-position-summary">
           Position: {{ normalizedCanvasViewportX }}vw / {{ normalizedCanvasViewportY }}vh
+          · Scale: {{ normalizedAnimationScale }}x
         </p>
 
         <button type="button" class="secondary-button" @click="resetPosition">
@@ -215,6 +234,10 @@ const DEFAULT_SPEECH_OFFSET_X = -220;
 const DEFAULT_SPEECH_OFFSET_Y = -210;
 const MIN_SPEECH_OFFSET = -600;
 const MAX_SPEECH_OFFSET = 600;
+const DEFAULT_ANIMATION_SCALE = 0.3;
+const MIN_ANIMATION_SCALE = 0.05;
+const MAX_ANIMATION_SCALE = 2;
+const ANIMATION_SCALE_STEP = 0.05;
 
 function normalizeRevealDelay(value, fallback = DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS) {
   if (value === null || value === undefined || value === '') {
@@ -282,6 +305,10 @@ export default {
       speechText: DEFAULT_SPEECH_TEXT,
       speechOffsetX: DEFAULT_SPEECH_OFFSET_X,
       speechOffsetY: DEFAULT_SPEECH_OFFSET_Y,
+      animationScale: DEFAULT_ANIMATION_SCALE,
+      MIN_ANIMATION_SCALE,
+      MAX_ANIMATION_SCALE,
+      ANIMATION_SCALE_STEP,
       toasts: [],
       nextToastId: 1,
       isCharacterOverlayVisible: !shouldUseDelayedCharacterReveal(this.smoothReveal, this.revealDelay),
@@ -306,6 +333,9 @@ export default {
     },
     normalizedCanvasViewportY() {
       return this.normalizeViewportPercent(this.canvasViewportY, DEFAULT_CANVAS_VIEWPORT_Y);
+    },
+    normalizedAnimationScale() {
+      return this.normalizeAnimationScale(this.animationScale, DEFAULT_ANIMATION_SCALE);
     },
     canvasPreviewStyle() {
       return {
@@ -437,6 +467,20 @@ export default {
         MAX_SPEECH_OFFSET,
       );
     },
+    normalizeAnimationScale(value, fallback) {
+      const numberValue = Number(value);
+
+      if (!Number.isFinite(numberValue) || numberValue <= 0) {
+        return fallback;
+      }
+
+      const clamped = Math.min(
+        Math.max(numberValue, MIN_ANIMATION_SCALE),
+        MAX_ANIMATION_SCALE,
+      );
+
+      return Math.round(clamped * 100) / 100;
+    },
     playAnimation() {
       const dragonBones = this.$refs.dragonBones;
 
@@ -463,6 +507,7 @@ export default {
       this.canvasViewportY = DEFAULT_CANVAS_VIEWPORT_Y;
       this.offsetX = 0;
       this.offsetY = 0;
+      this.animationScale = DEFAULT_ANIMATION_SCALE;
     },
     resetSpeechPosition() {
       this.speechOffsetX = DEFAULT_SPEECH_OFFSET_X;
