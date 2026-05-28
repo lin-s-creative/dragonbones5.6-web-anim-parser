@@ -17,6 +17,7 @@
         :scale="normalizedAnimationScale"
         :offset-x="offsetX"
         :offset-y="offsetY"
+        :shadow-style="shadowFilterStyle"
         armature-name="Armature"
         animation-name="animtion0"
         background-color="transparent"
@@ -211,6 +212,66 @@
           Reset speech position
         </button>
       </div>
+
+      <div class="canvas-controls shadow-controls" aria-label="Character shadow controls">
+        <label class="canvas-toggle">
+          <input v-model="shadowEnabled" type="checkbox" />
+          <span>Enable shadow</span>
+        </label>
+
+        <label class="canvas-field">
+          <span>Shadow color</span>
+          <input v-model="shadowColor" type="color" />
+        </label>
+
+        <label class="canvas-field canvas-field--range">
+          <span>Shadow opacity ({{ shadowOpacity }})</span>
+          <input
+            v-model.number="shadowOpacity"
+            type="range"
+            step="0.05"
+            min="0"
+            max="1"
+          />
+        </label>
+
+        <label class="canvas-field">
+          <span>Shadow offset X, px</span>
+          <input
+            v-model.number="shadowOffsetX"
+            type="number"
+            step="1"
+            min="-200"
+            max="200"
+          />
+        </label>
+
+        <label class="canvas-field">
+          <span>Shadow offset Y, px</span>
+          <input
+            v-model.number="shadowOffsetY"
+            type="number"
+            step="1"
+            min="-200"
+            max="200"
+          />
+        </label>
+
+        <label class="canvas-field">
+          <span>Shadow blur, px</span>
+          <input
+            v-model.number="shadowBlur"
+            type="number"
+            step="1"
+            min="0"
+            max="100"
+          />
+        </label>
+
+        <button type="button" class="secondary-button" @click="resetShadow">
+          Reset shadow
+        </button>
+      </div>
     </section>
   </aside>
 </template>
@@ -238,6 +299,32 @@ const DEFAULT_ANIMATION_SCALE = 0.3;
 const MIN_ANIMATION_SCALE = 0.05;
 const MAX_ANIMATION_SCALE = 2;
 const ANIMATION_SCALE_STEP = 0.05;
+
+const DEFAULT_SHADOW_COLOR = '#0f172a';
+const DEFAULT_SHADOW_OPACITY = 0.45;
+const DEFAULT_SHADOW_OFFSET_X = 12;
+const DEFAULT_SHADOW_OFFSET_Y = 18;
+const DEFAULT_SHADOW_BLUR = 18;
+const MIN_SHADOW_OFFSET = -200;
+const MAX_SHADOW_OFFSET = 200;
+const MIN_SHADOW_BLUR = 0;
+const MAX_SHADOW_BLUR = 100;
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return { r: 0, g: 0, b: 0 };
+  return {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+  };
+}
+
+function clamp(value, min, max, fallback) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
 
 function normalizeRevealDelay(value, fallback = DEFAULT_CHARACTER_OVERLAY_REVEAL_DELAY_MS) {
   if (value === null || value === undefined || value === '') {
@@ -309,6 +396,12 @@ export default {
       MIN_ANIMATION_SCALE,
       MAX_ANIMATION_SCALE,
       ANIMATION_SCALE_STEP,
+      shadowEnabled: true,
+      shadowColor: DEFAULT_SHADOW_COLOR,
+      shadowOpacity: DEFAULT_SHADOW_OPACITY,
+      shadowOffsetX: DEFAULT_SHADOW_OFFSET_X,
+      shadowOffsetY: DEFAULT_SHADOW_OFFSET_Y,
+      shadowBlur: DEFAULT_SHADOW_BLUR,
       toasts: [],
       nextToastId: 1,
       isCharacterOverlayVisible: !shouldUseDelayedCharacterReveal(this.smoothReveal, this.revealDelay),
@@ -367,6 +460,31 @@ export default {
     },
     normalizedSpeechRevealDelay() {
       return normalizeSpeechRevealDelay(this.speechRevealDelay, this.revealDelay);
+    },
+    normalizedShadowOffsetX() {
+      return clamp(this.shadowOffsetX, MIN_SHADOW_OFFSET, MAX_SHADOW_OFFSET, DEFAULT_SHADOW_OFFSET_X);
+    },
+    normalizedShadowOffsetY() {
+      return clamp(this.shadowOffsetY, MIN_SHADOW_OFFSET, MAX_SHADOW_OFFSET, DEFAULT_SHADOW_OFFSET_Y);
+    },
+    normalizedShadowBlur() {
+      return clamp(this.shadowBlur, MIN_SHADOW_BLUR, MAX_SHADOW_BLUR, DEFAULT_SHADOW_BLUR);
+    },
+    normalizedShadowOpacity() {
+      return clamp(this.shadowOpacity, 0, 1, DEFAULT_SHADOW_OPACITY);
+    },
+    shadowFilterStyle() {
+      if (!this.shadowEnabled) {
+        return {};
+      }
+      const { r, g, b } = hexToRgb(this.shadowColor);
+      const opacity = this.normalizedShadowOpacity;
+      const ox = this.normalizedShadowOffsetX;
+      const oy = this.normalizedShadowOffsetY;
+      const blur = this.normalizedShadowBlur;
+      return {
+        filter: `drop-shadow(${ox}px ${oy}px ${blur}px rgba(${r}, ${g}, ${b}, ${opacity}))`,
+      };
     },
   },
   watch: {
@@ -512,6 +630,14 @@ export default {
     resetSpeechPosition() {
       this.speechOffsetX = DEFAULT_SPEECH_OFFSET_X;
       this.speechOffsetY = DEFAULT_SPEECH_OFFSET_Y;
+    },
+    resetShadow() {
+      this.shadowEnabled = true;
+      this.shadowColor = DEFAULT_SHADOW_COLOR;
+      this.shadowOpacity = DEFAULT_SHADOW_OPACITY;
+      this.shadowOffsetX = DEFAULT_SHADOW_OFFSET_X;
+      this.shadowOffsetY = DEFAULT_SHADOW_OFFSET_Y;
+      this.shadowBlur = DEFAULT_SHADOW_BLUR;
     },
     showObjectClickToast(hitInfo) {
       const id = this.nextToastId;
@@ -743,7 +869,8 @@ button:focus-visible {
 }
 
 .canvas-controls--position,
-.speech-controls {
+.speech-controls,
+.shadow-controls {
   align-items: center;
 }
 

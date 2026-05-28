@@ -4,6 +4,7 @@
     class="dragonbones-canvas"
     :width="width"
     :height="height"
+    :style="shadowStyle"
     :aria-label="ariaLabel"
     @click="handleCanvasClick"
   ></canvas>
@@ -59,6 +60,10 @@ export default {
     ariaLabel: {
       type: String,
       default: 'DragonBones canvas animation',
+    },
+    shadowStyle: {
+      type: Object,
+      default: () => ({}),
     },
   },
   data() {
