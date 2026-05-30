@@ -5,8 +5,11 @@
       :class="{
         'canvas-preview--transparent': !showCanvasBackground,
         'animated-character-reveal--visible': isCharacterOverlayVisible,
+        'canvas-preview--hidden': isCharacterHidden,
       }"
       :style="canvasPreviewStyle"
+      :aria-hidden="isCharacterHidden ? 'true' : 'false'"
+      :inert="isCharacterHidden"
       aria-label="Animation canvas preview"
     >
       <ColorTileBackground v-if="showCanvasBackground" />
@@ -23,10 +26,32 @@
         background-color="transparent"
         @object-click="showObjectClickToast"
       />
+      <button
+        type="button"
+        class="close-button"
+        :style="closeButtonStyle"
+        aria-label="Hide character"
+        @click.stop="hideCharacter"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
 
+    <button
+      v-if="isCharacterHidden"
+      type="button"
+      class="show-tab"
+      :style="showTabStyle"
+      aria-label="Show character"
+      @click="showCharacter"
+    >
+      <span class="show-tab__text">{{ showTabText }}</span>
+    </button>
+
     <div
-      v-if="hasSpeechText"
+      v-if="hasSpeechText && !isCharacterHidden"
       class="character-speech animated-character-reveal"
       :class="{ 'animated-character-reveal--visible': isSpeechBubbleVisible }"
       :style="speechBubbleStyle"
@@ -60,8 +85,15 @@
       </div>
 
       <div class="canvas-controls" aria-label="Canvas settings controls">
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Canvas width</span>
+          <input
+            v-model.number="canvasWidth"
+            type="range"
+            step="10"
+            min="50"
+            max="1200"
+          />
           <input
             v-model.number="canvasWidth"
             type="number"
@@ -71,8 +103,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Canvas height</span>
+          <input
+            v-model.number="canvasHeight"
+            type="range"
+            step="10"
+            min="50"
+            max="1200"
+          />
           <input
             v-model.number="canvasHeight"
             type="number"
@@ -82,8 +121,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Internal offset X, px</span>
+          <input
+            v-model.number="offsetX"
+            type="range"
+            step="5"
+            min="-300"
+            max="300"
+          />
           <input
             v-model.number="offsetX"
             type="number"
@@ -93,8 +139,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Internal offset Y, px</span>
+          <input
+            v-model.number="offsetY"
+            type="range"
+            step="5"
+            min="-300"
+            max="300"
+          />
           <input
             v-model.number="offsetY"
             type="number"
@@ -186,8 +239,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Speech offset X, px</span>
+          <input
+            v-model.number="speechOffsetX"
+            type="range"
+            step="5"
+            min="-600"
+            max="600"
+          />
           <input
             v-model.number="speechOffsetX"
             type="number"
@@ -197,8 +257,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Speech offset Y, px</span>
+          <input
+            v-model.number="speechOffsetY"
+            type="range"
+            step="5"
+            min="-600"
+            max="600"
+          />
           <input
             v-model.number="speechOffsetY"
             type="number"
@@ -235,8 +302,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Shadow offset X, px</span>
+          <input
+            v-model.number="shadowOffsetX"
+            type="range"
+            step="1"
+            min="-200"
+            max="200"
+          />
           <input
             v-model.number="shadowOffsetX"
             type="number"
@@ -246,8 +320,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Shadow offset Y, px</span>
+          <input
+            v-model.number="shadowOffsetY"
+            type="range"
+            step="1"
+            min="-200"
+            max="200"
+          />
           <input
             v-model.number="shadowOffsetY"
             type="number"
@@ -257,8 +338,15 @@
           />
         </label>
 
-        <label class="canvas-field">
+        <label class="canvas-field canvas-field--range">
           <span>Shadow blur, px</span>
+          <input
+            v-model.number="shadowBlur"
+            type="range"
+            step="1"
+            min="0"
+            max="100"
+          />
           <input
             v-model.number="shadowBlur"
             type="number"
@@ -270,6 +358,58 @@
 
         <button type="button" class="secondary-button" @click="resetShadow">
           Reset shadow
+        </button>
+      </div>
+
+      <div class="canvas-controls" aria-label="Close button position controls">
+        <label class="canvas-field canvas-field--range">
+          <span>Close btn offset X, px</span>
+          <input
+            v-model.number="closeButtonOffsetX"
+            type="range"
+            step="1"
+            min="-100"
+            max="100"
+          />
+          <input
+            v-model.number="closeButtonOffsetX"
+            type="number"
+            step="1"
+            min="-100"
+            max="100"
+          />
+        </label>
+
+        <label class="canvas-field canvas-field--range">
+          <span>Close btn offset Y, px</span>
+          <input
+            v-model.number="closeButtonOffsetY"
+            type="range"
+            step="1"
+            min="-100"
+            max="100"
+          />
+          <input
+            v-model.number="closeButtonOffsetY"
+            type="number"
+            step="1"
+            min="-100"
+            max="100"
+          />
+        </label>
+
+        <label class="canvas-field">
+          <span>Show tab text</span>
+          <input
+            v-model="showTabText"
+            type="text"
+            maxlength="20"
+            placeholder="Tab label"
+          />
+        </label>
+
+        <button type="button" class="secondary-button" @click="resetCloseButtonPosition">
+          Reset close btn
         </button>
       </div>
     </section>
@@ -299,6 +439,10 @@ const DEFAULT_ANIMATION_SCALE = 0.3;
 const MIN_ANIMATION_SCALE = 0.05;
 const MAX_ANIMATION_SCALE = 2;
 const ANIMATION_SCALE_STEP = 0.05;
+
+const DEFAULT_CLOSE_BUTTON_OFFSET_X = 10;
+const DEFAULT_CLOSE_BUTTON_OFFSET_Y = 10;
+const DEFAULT_SHOW_TAB_TEXT = 'AI';
 
 const DEFAULT_SHADOW_COLOR = '#0f172a';
 const DEFAULT_SHADOW_OPACITY = 0.45;
@@ -412,6 +556,10 @@ export default {
       ),
       characterOverlayRevealTimeoutId: null,
       speechBubbleRevealTimeoutId: null,
+      isCharacterHidden: false,
+      closeButtonOffsetX: DEFAULT_CLOSE_BUTTON_OFFSET_X,
+      closeButtonOffsetY: DEFAULT_CLOSE_BUTTON_OFFSET_Y,
+      showTabText: DEFAULT_SHOW_TAB_TEXT,
     };
   },
   computed: {
@@ -484,6 +632,18 @@ export default {
       const blur = this.normalizedShadowBlur;
       return {
         filter: `drop-shadow(${ox}px ${oy}px ${blur}px rgba(${r}, ${g}, ${b}, ${opacity}))`,
+      };
+    },
+    closeButtonStyle() {
+      return {
+        top: `${this.closeButtonOffsetY}px`,
+        right: `${this.closeButtonOffsetX}px`,
+      };
+    },
+    showTabStyle() {
+      return {
+        top: `${this.normalizedCanvasViewportY}vh`,
+        transform: 'translateY(-50%)',
       };
     },
   },
@@ -655,6 +815,16 @@ export default {
         this.toasts = this.toasts.filter((toast) => toast.id !== id);
       }, 2600);
     },
+    hideCharacter() {
+      this.isCharacterHidden = true;
+    },
+    showCharacter() {
+      this.isCharacterHidden = false;
+    },
+    resetCloseButtonPosition() {
+      this.closeButtonOffsetX = DEFAULT_CLOSE_BUTTON_OFFSET_X;
+      this.closeButtonOffsetY = DEFAULT_CLOSE_BUTTON_OFFSET_Y;
+    },
   },
 };
 </script>
@@ -721,6 +891,78 @@ export default {
   transform: translate(-50%, -50%);
   box-shadow: var(--canvas-preview-shadow, 0 28px 70px rgb(15 23 42 / 34%));
   pointer-events: auto;
+  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 400ms ease;
+}
+
+.canvas-preview--hidden {
+  transform: translate(calc(100vw), -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.close-button {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgb(148 163 184 / 40%);
+  border-radius: 50%;
+  color: #e0f2fe;
+  background: rgb(15 23 42 / 80%);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.close-button:hover,
+.close-button:focus-visible {
+  background: rgb(37 99 235 / 90%);
+  transform: scale(1.1);
+  outline: none;
+}
+
+.show-tab {
+  position: fixed;
+  right: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  padding: 12px 4px;
+  border: 1px solid rgb(148 163 184 / 30%);
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  color: #e0f2fe;
+  background: linear-gradient(135deg, rgb(15 23 42 / 92%), rgb(30 64 175 / 80%));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: -4px 4px 16px rgb(2 6 23 / 30%);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  will-change: transform;
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.show-tab__text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+}
+
+.show-tab:hover,
+.show-tab:focus-visible {
+  background: linear-gradient(135deg, rgb(30 64 175 / 92%), rgb(37 99 235 / 90%));
+  box-shadow: -6px 4px 20px rgb(2 6 23 / 40%);
+  outline: none;
 }
 
 .canvas-preview--transparent {
